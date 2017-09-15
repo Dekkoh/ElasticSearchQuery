@@ -1,6 +1,7 @@
 PODS:
   - Alamofire (4.5.0)
-  - ElasticSearchQuery (0.1.0)
+  - ElasticSearchQuery (0.1.0):
+    - Alamofire
 
 DEPENDENCIES:
   - Alamofire
@@ -12,7 +13,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Alamofire: f28cdffd29de33a7bfa022cbd63ae95a27fae140
-  ElasticSearchQuery: dc0aa6ed975645c042afabdf3c3c1339eaa32cd2
+  ElasticSearchQuery: 0a501ccf81e7cdd2c53016f63f098580fed2e0e8
 
 PODFILE CHECKSUM: 5c52dbbc3889af9844a7534ba32f110eaa4a2a88
 

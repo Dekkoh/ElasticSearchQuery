@@ -28,13 +28,13 @@ TODO: Add long description of the pod here.
   s.source           = { :git => 'https://github.com/Dekkoh/ElasticSearchQuery.git', :tag => s.version.to_s }
   # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
 
-  s.ios.deployment_target = '9.0'
-  s.watchos.deployment_target = '3.2'
+  s.ios.deployment_target = '8.3'
+  s.watchos.deployment_target = '3.1'
   s.tvos.deployment_target = '9.0'
 
   s.source_files = 'ElasticSearchQuery/Classes/**/*'
   s.frameworks = 'Foundation'
-  s.dependency = 'Alamofire'
+  s.dependency 'Alamofire'
   s.source_files = 'ElasticSearchQuery/Classes/*.{swift}'
   
   # s.resource_bundles = {
