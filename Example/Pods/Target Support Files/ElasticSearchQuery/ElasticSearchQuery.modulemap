@@ -1,0 +1,6 @@
+framework module ElasticSearchQuery {
+  umbrella header "ElasticSearchQuery-umbrella.h"
+
+  export *
+  module * { export * }
+}

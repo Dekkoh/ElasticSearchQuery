@@ -1,0 +1,22 @@
+{
+  "name": "ElasticSearchQuery",
+  "version": "0.1.0",
+  "summary": "A short description of ElasticSearchQuery.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/Dekkoh/ElasticSearchQuery",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "Dekkoh": "andre.sakiyama@venturus.org.br"
+  },
+  "source": {
+    "git": "https://github.com/Dekkoh/ElasticSearchQuery.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "ElasticSearchQuery/Classes/**/*"
+}

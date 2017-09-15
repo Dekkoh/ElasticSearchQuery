@@ -2,6 +2,7 @@ use_frameworks!
 
 target 'ElasticSearchQuery_Example' do
   pod 'ElasticSearchQuery', :path => '../'
+  pod 'Alamofire'
 
   target 'ElasticSearchQuery_Tests' do
     inherit! :search_paths
