@@ -22,7 +22,7 @@ pod 'ElasticSearchQuery'
 
 ## Author
 
-Dekkoh, andre.sakiyama@venturus.org.br
+Dekkoh, andre.tsuyoshi@gmail.com
 
 ## License
 
