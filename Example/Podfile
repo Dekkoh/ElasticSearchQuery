@@ -1,0 +1,11 @@
+use_frameworks!
+
+target 'ElasticSearchQuery_Example' do
+  pod 'ElasticSearchQuery', :path => '../'
+
+  target 'ElasticSearchQuery_Tests' do
+    inherit! :search_paths
+
+    
+  end
+end
