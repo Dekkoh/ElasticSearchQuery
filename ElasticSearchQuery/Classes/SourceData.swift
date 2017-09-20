@@ -14,6 +14,7 @@ class SourceData: NSObject, Mappable {
     var datetime_idx: Int?
     var dust: Int?
     var humidity: Int?
+    var temperature: Int?
     var methane: Int?
     var co: Int?
     

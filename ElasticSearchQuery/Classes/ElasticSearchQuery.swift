@@ -113,7 +113,12 @@ public class ElasticSearchQuery {
     }
     
     
-    static private func getDataSize(body: [String  : Any], field: String, completion:@escaping ([String : Any], String, Int) -> Void, callback: @escaping(Int, Int, Int, [Int], [Int]) -> Void) {
+    static private func getDataSize(
+        body: [String  : Any],
+        field: String,
+        completion:@escaping ([String : Any], String, Int, @escaping(Int, Int, Int, [Int], [Int]) -> Void) -> Void,
+        callback: @escaping(Int, Int, Int, [Int], [Int]) -> Void) {
+        
         var modifiedBody = body
         modifiedBody["size"] = 0
         let jsonBody = dictToJSON(data: modifiedBody)
@@ -149,7 +154,11 @@ public class ElasticSearchQuery {
         }
     }
     
-    static private func makeAssynchronousRequest(body: [String : Any], field: String, pages: Int, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static private func makeAssynchronousRequest(
+        body: [String : Any],
+        field: String,
+        pages: Int,
+        callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
         
         let dispatchGroup = DispatchGroup()
         
@@ -215,7 +224,7 @@ public class ElasticSearchQuery {
     
     static public func queryData(field: String = "dust", sortingFeature: String = "datetime_idx", orderType: String = "asc", startTimestamp: String = "1491004800000", endTimestamp: String = "1499177600000", callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
         let body = buildBody(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
-        getDataSize(body: body, field: field, completion: makeAssynchronousRequest)
+        getDataSize(body: body, field: field, completion: makeAssynchronousRequest, callback: callback)
     }
     
     static public func getDust(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
