@@ -214,7 +214,7 @@ public class ElasticSearchQuery {
         getDataSize(body: body, field: field, completion: makeAssynchronousRequest)
     }
     
-    public func setURL(url : String) {
+    public func setURL(url : String) -> Void {
         self.urlString = url
     }
 }
