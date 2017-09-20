@@ -6,7 +6,6 @@ public class ElasticSearchQuery {
     static private var urlString : String = ""
     static private var pageSize = 10000.0
     static private var data: [[ElasticSearchData]] = []
-    static private var callback: (Int, Int, Int, [Int], [Int]) -> Void = {_ in }
     
     static private func buildBody(field: String!, sortingFeature: String!, orderType: String!, startTimestamp: String!, endTimestamp: String!) -> [String : Any] {
         let startPosition = 0
@@ -64,7 +63,7 @@ public class ElasticSearchQuery {
         return jsonData!
     }
     
-    static private func extractData(rawData: [ElasticSearchData], field: String) {
+    static private func extractData(rawData: [ElasticSearchData], field: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
         var average = 0
         var maximum = Int.min
         var minimum = Int.max
@@ -76,6 +75,9 @@ public class ElasticSearchQuery {
             switch field {
             case "dust":
                 elemData = (elem.sourceData?.dust!)!
+                break
+            case "temperature":
+                elemData = (elem.sourceData?.temperature!)!
                 break
             case "humidity":
                 elemData = (elem.sourceData?.humidity!)!
@@ -111,7 +113,7 @@ public class ElasticSearchQuery {
     }
     
     
-    static private func getDataSize(body: [String  : Any], field: String, completion:@escaping ([String : Any], String, Int) -> Void) {
+    static private func getDataSize(body: [String  : Any], field: String, completion:@escaping ([String : Any], String, Int) -> Void, callback: @escaping(Int, Int, Int, [Int], [Int]) -> Void) {
         var modifiedBody = body
         modifiedBody["size"] = 0
         let jsonBody = dictToJSON(data: modifiedBody)
@@ -142,12 +144,12 @@ public class ElasticSearchQuery {
                 break
             }
             
-            completion(body, field, totalPages)
+            completion(body, field, totalPages, callback)
             
         }
     }
     
-    static private func makeAssynchronousRequest(body: [String : Any], field: String, pages: Int) {
+    static private func makeAssynchronousRequest(body: [String : Any], field: String, pages: Int, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
         
         let dispatchGroup = DispatchGroup()
         
@@ -205,17 +207,57 @@ public class ElasticSearchQuery {
                 })
                 
                 let reducedData = self.data.reduce([], +)
-                self.extractData(rawData: reducedData, field: field)
+                self.extractData(rawData: reducedData, field: field, callback: callback)
 
             }
         }
     }
     
     static public func queryData(field: String = "dust", sortingFeature: String = "datetime_idx", orderType: String = "asc", startTimestamp: String = "1491004800000", endTimestamp: String = "1499177600000", callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
-        self.callback = callback
         let body = buildBody(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
         getDataSize(body: body, field: field, completion: makeAssynchronousRequest)
     }
+    
+    static public func getDust(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+        let field = "dust"
+        let sortingFeature = "datetime_idx"
+        let orderType = "asc"
+        
+        queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
+    }
+    
+    static public func getHumidity(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+        let field = "humidity"
+        let sortingFeature = "datetime_idx"
+        let orderType = "asc"
+        
+        queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
+    }
+    
+    static public func getTemperature(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+        let field = "temperature"
+        let sortingFeature = "datetime_idx"
+        let orderType = "asc"
+        
+        queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
+    }
+    
+    static public func getMethane(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+        let field = "methane"
+        let sortingFeature = "datetime_idx"
+        let orderType = "asc"
+        
+        queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
+    }
+    
+    static public func getCO(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+        let field = "co"
+        let sortingFeature = "datetime_idx"
+        let orderType = "asc"
+        
+        queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
+    }
+
     
     static public func setURL(url : String) -> Void {
         self.urlString = url

@@ -30,6 +30,7 @@ class SourceData: NSObject, Mappable {
         datetime_idx <- map["datetime_idx"]
         dust <- map["dust"]
         humidity <- map["humidity"]
+        temperature <- map["temperature"]
         methane <- map["methane"]
         co <- map["co"]
     }
