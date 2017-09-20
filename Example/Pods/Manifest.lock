@@ -1,10 +1,16 @@
 PODS:
   - Alamofire (4.5.0)
+  - AlamofireObjectMapper (4.1.0):
+    - Alamofire (~> 4.1)
+    - ObjectMapper (~> 2.0)
   - ElasticSearchQuery (0.1.0):
     - Alamofire
+    - AlamofireObjectMapper
+  - ObjectMapper (2.2.8)
 
 DEPENDENCIES:
   - Alamofire
+  - AlamofireObjectMapper
   - ElasticSearchQuery (from `../`)
 
 EXTERNAL SOURCES:
@@ -13,8 +19,10 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Alamofire: f28cdffd29de33a7bfa022cbd63ae95a27fae140
-  ElasticSearchQuery: 0a501ccf81e7cdd2c53016f63f098580fed2e0e8
+  AlamofireObjectMapper: 435adc82f5b367679bd9e71c4974a54efd0b2521
+  ElasticSearchQuery: e2efc37cdda403c18b3cc67f1272f10db99b4aa6
+  ObjectMapper: 3d571bb5af471c779e1160828cd9ad5c4ef90958
 
-PODFILE CHECKSUM: 5c52dbbc3889af9844a7534ba32f110eaa4a2a88
+PODFILE CHECKSUM: ca908b59f23489dc191759dcb4fc6e6d213cd206
 
 COCOAPODS: 1.3.1
