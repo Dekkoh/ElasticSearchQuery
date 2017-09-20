@@ -27,3 +27,7 @@ Dekkoh, andre.tsuyoshi@gmail.com
 ## License
 
 ElasticSearchQuery is available under the MIT license. See the LICENSE file for more info.
+
+## References
+
+https://medium.com/swiftindia/build-an-ios-watchos-and-tvos-framework-with-a-dependency-using-cocoapods-80cb9307992f
