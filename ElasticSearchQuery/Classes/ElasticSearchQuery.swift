@@ -8,6 +8,10 @@ public class ElasticSearchQuery {
     private var data: [[ElasticSearchData]] = []
     private var callback: (Int, Int, Int, [Int], [Int]) -> Void = {_ in }
     
+    init() {
+        
+    }
+    
     private func buildBody(field: String!, sortingFeature: String!, orderType: String!, startTimestamp: String!, endTimestamp: String!) -> [String : Any] {
         let startPosition = 0
         
