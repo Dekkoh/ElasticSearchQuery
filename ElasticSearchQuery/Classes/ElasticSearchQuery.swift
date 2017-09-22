@@ -168,7 +168,7 @@ public class ElasticSearchQuery {
         
         
         
-        for var i in (0..<pages) {
+        for i in (0..<pages) {
             var modifiedBody = body
             modifiedBody["from"] = Int(pageSize) * (i)
             let jsonBody = dictToJSON(data: modifiedBody)
