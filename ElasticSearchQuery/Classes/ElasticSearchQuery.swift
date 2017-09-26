@@ -79,18 +79,33 @@ public class ElasticSearchQuery {
             
             switch field {
             case "dust":
+                guard elem.sourceData?.dust == nil else {
+                    break
+                }
                 elemData = (elem.sourceData?.dust!)!
                 break
             case "temperature":
+                guard elem.sourceData?.temperature == nil else {
+                    break
+                }
                 elemData = (elem.sourceData?.temperature!)!
                 break
             case "humidity":
+                guard elem.sourceData?.humidity == nil else {
+                    break
+                }
                 elemData = (elem.sourceData?.humidity!)!
                 break
             case "methane":
+                guard elem.sourceData?.methane == nil else {
+                    break
+                }
                 elemData = (elem.sourceData?.methane!)!
                 break
             case "co":
+                guard elem.sourceData?.co == nil else {
+                    break
+                }
                 elemData = (elem.sourceData?.co!)!
                 break
             default:
