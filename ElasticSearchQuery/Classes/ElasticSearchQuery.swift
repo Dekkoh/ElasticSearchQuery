@@ -72,6 +72,11 @@ public class ElasticSearchQuery {
         var elemData = 0
         
         for elem in rawData {
+            
+            guard elem.sourceData != nil else {
+                break
+            }
+            
             switch field {
             case "dust":
                 elemData = (elem.sourceData?.dust!)!
