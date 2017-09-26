@@ -107,7 +107,11 @@ public class ElasticSearchQuery {
             
         }
         
-        average /= rawData.count
+        if (rawData.count == 0) {
+            average = 0
+        } else {
+            average /= rawData.count
+        }
         
         callback(average, maximum, minimum, dataArray, timestampArray)
     }
