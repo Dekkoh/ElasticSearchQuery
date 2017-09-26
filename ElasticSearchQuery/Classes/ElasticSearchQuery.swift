@@ -109,6 +109,8 @@ public class ElasticSearchQuery {
         
         if (rawData.count == 0) {
             average = 0
+            maximum = 0
+            minimum = 0
         } else {
             average /= rawData.count
         }
@@ -145,7 +147,11 @@ public class ElasticSearchQuery {
                 
                 let total = hits["total"] as! Double
                 
-                totalPages = Int(ceil(total / self.pageSize))
+                if (total == 0) {
+                    totalPages = 0
+                } else {
+                    totalPages = Int(ceil(total / self.pageSize))
+                }
                 
                 break
             case .failure(let error):
