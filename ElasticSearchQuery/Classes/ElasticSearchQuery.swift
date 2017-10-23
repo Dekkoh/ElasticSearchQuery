@@ -190,15 +190,18 @@ public class ElasticSearchQuery {
         pages: Int,
         callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
         
+        self.data = []
         let dispatchGroup = DispatchGroup()
         
-        for _ in (0..<pages) {
-            dispatchGroup.enter()
-        }
+//        for _ in (0..<pages) {
+//            dispatchGroup.enter()
+//        }
         
         
         
         for i in (0..<pages) {
+            dispatchGroup.enter()
+            
             var modifiedBody = body
             modifiedBody["from"] = Int(pageSize) * (i)
             let jsonBody = dictToJSON(data: modifiedBody)
@@ -229,6 +232,7 @@ public class ElasticSearchQuery {
                     
                 case .failure(let error):
                     print("Request failed with error: \(error)")
+                    dispatchGroup.leave()
                     //callback(response.result.value as? NSMutableDictionary,error as NSError?)
                     return
                 }
