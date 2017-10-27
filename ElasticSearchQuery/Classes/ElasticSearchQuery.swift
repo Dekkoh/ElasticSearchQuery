@@ -6,13 +6,17 @@ public class ElasticSearchQuery {
     static private var urlString : String = ""
     static private var pageSize = 10000.0
     static private var data: [[ElasticSearchData]] = []
+    static private var callback: ((Int, Int, Int, [Int], [Int], Int) -> Void) = {arg1,arg2,arg3,arg4,arg5,arg6  in}
+    static private var field = ""
+    static private var sortingFeature = ""
+    static private var firstDataTimestamp = ""
     
-    static private func buildBody(field: String!, sortingFeature: String!, orderType: String!, startTimestamp: String!, endTimestamp: String!) -> [String : Any] {
+    static private func buildBody(orderType: String!, startTimestamp: String!, endTimestamp: String!) -> [String : Any] {
         let startPosition = 0
         
         let body : [String : Any] = [
             "sort": [
-                [sortingFeature : ["order": orderType]]
+                [self.sortingFeature : ["order": orderType]]
             ],
             "size": pageSize,
             "from": startPosition,
@@ -22,7 +26,7 @@ public class ElasticSearchQuery {
                         "bool": [
                             "must": [[
                                 "exists": [
-                                    "field": field
+                                    "field": self.field
                                 ]
                             ],
                             [
@@ -63,13 +67,160 @@ public class ElasticSearchQuery {
         return jsonData!
     }
     
-    static private func extractData(rawData: [ElasticSearchData], field: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    
+    static private func getDataSize(body: [String  : Any]) {
+        
+        var modifiedBody = body
+        modifiedBody["size"] = 0
+        let jsonBody = dictToJSON(data: modifiedBody)
+        
+        let request = buildRequest(body: jsonBody)
+        
+        Alamofire.request(request).responseJSON { (response) in
+            var totalPages: Int = 0
+            
+            switch response.result {
+            case .success:
+                guard let result = response.result.value as? [String : Any] else {
+                    print("Parsing Error")
+                    return
+                }
+                guard let hits = result["hits"] as? [String : Any] else {
+                    print("Parsing Error")
+                    return
+                }
+                
+                let total = hits["total"] as! Double
+                
+                if (total == 0) {
+                    totalPages = 0
+                } else {
+                    totalPages = Int(ceil(total / self.pageSize))
+                }
+                
+                break
+            case .failure(let error):
+                print(error)
+                break
+            }
+            
+            makeAssynchronousRequest(body: body, pages: totalPages)
+            
+        }
+    }
+    
+    static private func makeAssynchronousRequest(body: [String : Any], pages: Int) {
+        
+        self.data = []
+        let dispatchGroup = DispatchGroup()
+        
+        for i in (0..<pages) {
+            dispatchGroup.enter()
+            
+            var modifiedBody = body
+            modifiedBody["from"] = Int(pageSize) * (i)
+            let jsonBody = dictToJSON(data: modifiedBody)
+            
+            let request = buildRequest(body: jsonBody)
+            
+            Alamofire.request(request).responseJSON { (response) in
+                switch response.result {
+                case .success:
+                    guard let result = response.result.value as? [String : Any] else {
+                        print("Parsing Error")
+                        return
+                    }
+                    guard let hits = result["hits"] as? [String : Any] else {
+                        print("Parsing Error")
+                        return
+                    }
+                    guard let source = hits["hits"] as? Array<[String : Any]> else {
+                        print("Parsing Error")
+                        return
+                    }
+                    
+                    self.data = Array<[ElasticSearchData]>()
+                    self.data.append(Mapper<ElasticSearchData>().mapArray(JSONArray: source) as [ElasticSearchData]!)
+                    dispatchGroup.leave()
+                    
+                    break
+                    
+                case .failure(let error):
+                    print("Request failed with error: \(error)")
+                    dispatchGroup.leave()
+                    return
+                }
+            }
+        }
+        
+        DispatchQueue.global(qos: .background).async {
+            dispatchGroup.wait()
+            DispatchQueue.main.async {
+                self.data.sort(by: { (a, b) -> Bool in
+                    if ((a[0].sourceData?.datetime_idx)! < (b[0].sourceData?.datetime_idx)!){
+                        return true
+                    }
+                    return false
+                })
+                
+                let reducedData = self.data.reduce([], +)
+                getFirstDataBeforeStart(rawData: reducedData)
+//                self.extractData(rawData: reducedData)
+
+            }
+        }
+    }
+    
+    static private func getFirstDataBeforeStart(rawData: [ElasticSearchData]) {
+        var modifiedBody = buildBody(orderType: "desc", startTimestamp: "0", endTimestamp: firstDataTimestamp)
+        modifiedBody["pageSize"] = 1
+        
+        let jsonBody = dictToJSON(data: modifiedBody)
+        let request = buildRequest(body: jsonBody)
+        
+        Alamofire.request(request).responseJSON { (response) in
+            var firstData = ElasticSearchData()
+            
+            switch response.result {
+            case .success:
+                guard let result = response.result.value as? [String : Any] else {
+                    print("Parsing Error")
+                    return
+                }
+                guard let hits = result["hits"] as? [String : Any] else {
+                    print("Parsing Error")
+                    return
+                }
+                guard let source = hits["hits"] as? Array<[String : Any]> else {
+                    print("Parsing Error")
+                    return
+                }
+                firstData = Mapper<ElasticSearchData>().mapArray(JSONArray: source)[0]
+//                self.data = Array<[ElasticSearchData]>()
+//                self.data.append(Mapper<ElasticSearchData>().mapArray(JSONArray: source) as [ElasticSearchData]!)
+                
+                break
+                
+            case .failure(let error):
+                print("Request failed with error: \(error)")
+                return
+            }
+            
+            extractData(rawData: rawData, firstData: firstData)
+            
+        }
+        
+        
+    }
+    
+    static private func extractData(rawData: [ElasticSearchData], firstData: ElasticSearchData) {
         var average = 0
         var maximum = Int.min
         var minimum = Int.max
         var dataArray: [Int] = []
         var timestampArray: [Int] = []
         var elemData = 0
+        var extractedFirstData = 0
         
         for elem in rawData {
             
@@ -77,7 +228,7 @@ public class ElasticSearchQuery {
                 break
             }
             
-            switch field {
+            switch self.field {
             case "dust":
                 guard elem.sourceData?.dust != nil else {
                     break
@@ -135,133 +286,55 @@ public class ElasticSearchQuery {
             average /= rawData.count
         }
         
-        callback(average, maximum, minimum, dataArray, timestampArray)
-    }
-    
-    
-    static private func getDataSize(
-        body: [String  : Any],
-        field: String,
-        completion:@escaping ([String : Any], String, Int, @escaping(Int, Int, Int, [Int], [Int]) -> Void) -> Void,
-        callback: @escaping(Int, Int, Int, [Int], [Int]) -> Void) {
-        
-        var modifiedBody = body
-        modifiedBody["size"] = 0
-        let jsonBody = dictToJSON(data: modifiedBody)
-        
-        let request = buildRequest(body: jsonBody)
-        
-        Alamofire.request(request).responseJSON { (response) in
-            var totalPages: Int = 0
-            
-            switch response.result {
-            case .success:
-                guard let result = response.result.value as? [String : Any] else {
-                    print("Parsing Error")
-                    return
-                }
-                guard let hits = result["hits"] as? [String : Any] else {
-                    print("Parsing Error")
-                    return
-                }
-                
-                let total = hits["total"] as! Double
-                
-                if (total == 0) {
-                    totalPages = 0
-                } else {
-                    totalPages = Int(ceil(total / self.pageSize))
-                }
-                
-                break
-            case .failure(let error):
-                print(error)
+        switch self.field {
+        case "dust":
+            guard firstData.sourceData?.dust != nil else {
                 break
             }
-            
-            completion(body, field, totalPages, callback)
-            
-        }
-    }
-    
-    static private func makeAssynchronousRequest(
-        body: [String : Any],
-        field: String,
-        pages: Int,
-        callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
-        
-        self.data = []
-        let dispatchGroup = DispatchGroup()
-        
-//        for _ in (0..<pages) {
-//            dispatchGroup.enter()
-//        }
-        
-        
-        
-        for i in (0..<pages) {
-            dispatchGroup.enter()
-            
-            var modifiedBody = body
-            modifiedBody["from"] = Int(pageSize) * (i)
-            let jsonBody = dictToJSON(data: modifiedBody)
-            
-            let request = buildRequest(body: jsonBody)
-            
-            Alamofire.request(request).responseJSON { (response) in
-                switch response.result {
-                case .success:
-                    guard let result = response.result.value as? [String : Any] else {
-                        print("Parsing Error")
-                        return
-                    }
-                    guard let hits = result["hits"] as? [String : Any] else {
-                        print("Parsing Error")
-                        return
-                    }
-                    guard let source = hits["hits"] as? Array<[String : Any]> else {
-                        print("Parsing Error")
-                        return
-                    }
-                    
-                    self.data = Array<[ElasticSearchData]>()
-                    self.data.append(Mapper<ElasticSearchData>().mapArray(JSONArray: source) as [ElasticSearchData]!)
-                    dispatchGroup.leave()
-                    
-                    break
-                    
-                case .failure(let error):
-                    print("Request failed with error: \(error)")
-                    dispatchGroup.leave()
-                    //callback(response.result.value as? NSMutableDictionary,error as NSError?)
-                    return
-                }
+            extractedFirstData = (firstData.sourceData?.dust)!
+            break
+        case "temperature":
+            guard firstData.sourceData?.temperature != nil else {
+                break
             }
+            extractedFirstData = (firstData.sourceData?.temperature)!
+            break
+        case "humidity":
+            guard firstData.sourceData?.humidity != nil else {
+                break
+            }
+            extractedFirstData = (firstData.sourceData?.humidity)!
+            break
+        case "methane":
+            guard firstData.sourceData?.methane != nil else {
+                break
+            }
+            extractedFirstData = (firstData.sourceData?.methane)!
+            break
+        case "co":
+            guard firstData.sourceData?.co != nil else {
+                break
+            }
+            extractedFirstData = (firstData.sourceData?.co)!
+            break
+        default:
+            break
         }
         
-        DispatchQueue.global(qos: .background).async {
-            dispatchGroup.wait()
-            DispatchQueue.main.async {
-                self.data.sort(by: { (a, b) -> Bool in
-                    if ((a[0].sourceData?.datetime_idx)! < (b[0].sourceData?.datetime_idx)!){
-                        return true
-                    }
-                    return false
-                })
-                
-                let reducedData = self.data.reduce([], +)
-                self.extractData(rawData: reducedData, field: field, callback: callback)
-
-            }
-        }
+        self.callback(average, maximum, minimum, dataArray, timestampArray, extractedFirstData)
     }
     
-    static public func queryData(field: String = "dust", sortingFeature: String = "datetime_idx", orderType: String = "asc", startTimestamp: String = "1491004800000", endTimestamp: String = "1499177600000", callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
-        let body = buildBody(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
-        getDataSize(body: body, field: field, completion: makeAssynchronousRequest, callback: callback)
+    static public func queryData(field: String = "dust", sortingFeature: String = "datetime_idx", orderType: String = "asc", startTimestamp: String = "1491004800000", endTimestamp: String = "1499177600000", callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
+        self.callback = callback
+        self.field = field
+        self.sortingFeature = sortingFeature
+        self.firstDataTimestamp = String(Int(startTimestamp)! - 1)
+        
+        let body = buildBody(orderType: orderType, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
+        getDataSize(body: body)
     }
     
-    static public func getDust(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static public func getDust(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
         let field = "dust"
         let sortingFeature = "datetime_idx"
         let orderType = "asc"
@@ -269,7 +342,7 @@ public class ElasticSearchQuery {
         queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
     }
     
-    static public func getHumidity(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static public func getHumidity(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
         let field = "humidity"
         let sortingFeature = "datetime_idx"
         let orderType = "asc"
@@ -277,7 +350,7 @@ public class ElasticSearchQuery {
         queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
     }
     
-    static public func getTemperature(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static public func getTemperature(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
         let field = "temperature"
         let sortingFeature = "datetime_idx"
         let orderType = "asc"
@@ -285,7 +358,7 @@ public class ElasticSearchQuery {
         queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
     }
     
-    static public func getMethane(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static public func getMethane(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
         let field = "methane"
         let sortingFeature = "datetime_idx"
         let orderType = "asc"
@@ -293,7 +366,7 @@ public class ElasticSearchQuery {
         queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
     }
     
-    static public func getCO(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int]) -> Void) {
+    static public func getCO(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
         let field = "co"
         let sortingFeature = "datetime_idx"
         let orderType = "asc"
