@@ -6,17 +6,17 @@ public class ElasticSearchQuery {
     static private var urlString : String = ""
     static private var pageSize = 10000.0
     static private var data: [[ElasticSearchData]] = []
-    static private var callback: ((Int, Int, Int, [Int], [Int], Int) -> Void) = {arg1,arg2,arg3,arg4,arg5,arg6  in}
-    static private var field = ""
-    static private var sortingFeature = ""
-    static private var firstDataTimestamp = ""
     
-    static private func buildBody(orderType: String!, startTimestamp: String!, endTimestamp: String!) -> [String : Any] {
+    static private func buildBody(sortingFeature: String,
+                                  orderType: String,
+                                  field: String,
+                                  startTimestamp: String,
+                                  endTimestamp: String) -> [String : Any] {
         let startPosition = 0
         
         let body : [String : Any] = [
             "sort": [
-                [self.sortingFeature : ["order": orderType]]
+                [sortingFeature : ["order": orderType]]
             ],
             "size": pageSize,
             "from": startPosition,
@@ -26,17 +26,17 @@ public class ElasticSearchQuery {
                         "bool": [
                             "must": [[
                                 "exists": [
-                                    "field": self.field
+                                    "field": field
                                 ]
-                            ],
-                            [
-                                "range": [
-                                    "datetime_idx": [
-                                        "gte": startTimestamp,
-                                        "lte": endTimestamp
-                                    ]
-                                ]
-                            ]]
+                                ],
+                                     [
+                                        "range": [
+                                            "datetime_idx": [
+                                                "gte": startTimestamp,
+                                                "lte": endTimestamp
+                                            ]
+                                        ]
+                                ]]
                         ]
                     ]
                 ]
@@ -55,7 +55,7 @@ public class ElasticSearchQuery {
         return request
         
     }
-
+    
     
     static private func dictToJSON(data: [String : Any]) -> Data {
         let bodyJSON =   try! JSONSerialization.data(withJSONObject: data, options: JSONSerialization.WritingOptions.prettyPrinted)
@@ -68,7 +68,11 @@ public class ElasticSearchQuery {
     }
     
     
-    static private func getDataSize(body: [String  : Any]) {
+    static private func getDataSize(body: [String  : Any],
+                                    callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void,
+                                    field: String,
+                                    sortingFeature: String,
+                                    firstDataTimestamp: String) {
         
         var modifiedBody = body
         modifiedBody["size"] = 0
@@ -82,11 +86,11 @@ public class ElasticSearchQuery {
             switch response.result {
             case .success:
                 guard let result = response.result.value as? [String : Any] else {
-                    print("Parsing Error")
+                    print("Data Size Parsing Error")
                     return
                 }
                 guard let hits = result["hits"] as? [String : Any] else {
-                    print("Parsing Error")
+                    print("Data Size Parsing Error")
                     return
                 }
                 
@@ -100,16 +104,21 @@ public class ElasticSearchQuery {
                 
                 break
             case .failure(let error):
-                print(error)
+                print("Get Data Size with error: \(error)")
                 break
             }
             
-            makeAssynchronousRequest(body: body, pages: totalPages)
+            makeAssynchronousRequest(body: body, pages: totalPages, callback: callback, field: field, sortingFeature: sortingFeature, firstDataTimestamp: firstDataTimestamp)
             
         }
     }
     
-    static private func makeAssynchronousRequest(body: [String : Any], pages: Int) {
+    static private func makeAssynchronousRequest(body: [String : Any],
+                                                 pages: Int,
+                                                 callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void,
+                                                 field: String,
+                                                 sortingFeature: String,
+                                                 firstDataTimestamp: String) {
         
         self.data = []
         let dispatchGroup = DispatchGroup()
@@ -127,15 +136,15 @@ public class ElasticSearchQuery {
                 switch response.result {
                 case .success:
                     guard let result = response.result.value as? [String : Any] else {
-                        print("Parsing Error")
+                        print("Data Parsing Error")
                         return
                     }
                     guard let hits = result["hits"] as? [String : Any] else {
-                        print("Parsing Error")
+                        print("Data Parsing Error")
                         return
                     }
                     guard let source = hits["hits"] as? Array<[String : Any]> else {
-                        print("Parsing Error")
+                        print("Data Parsing Error")
                         return
                     }
                     
@@ -164,16 +173,21 @@ public class ElasticSearchQuery {
                 })
                 
                 let reducedData = self.data.reduce([], +)
-                getFirstDataBeforeStart(rawData: reducedData)
-//                self.extractData(rawData: reducedData)
-
+                getFirstDataBeforeStart(rawData: reducedData, callback: callback, field: field, sortingFeature: sortingFeature, firstDataTimestamp: firstDataTimestamp)
+                
             }
         }
     }
     
-    static private func getFirstDataBeforeStart(rawData: [ElasticSearchData]) {
-        var modifiedBody = buildBody(orderType: "desc", startTimestamp: "0", endTimestamp: firstDataTimestamp)
-        modifiedBody["pageSize"] = 1
+    static private func getFirstDataBeforeStart(rawData: [ElasticSearchData],
+                                                callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void,
+                                                field: String,
+                                                sortingFeature: String,
+                                                firstDataTimestamp: String) {
+        let orderType: String = "desc"
+        let startTimestamp: String = "0"
+        var modifiedBody = buildBody(sortingFeature: sortingFeature, orderType: orderType, field: field, startTimestamp: startTimestamp, endTimestamp: firstDataTimestamp)
+        modifiedBody["size"] = 1
         
         let jsonBody = dictToJSON(data: modifiedBody)
         let request = buildRequest(body: jsonBody)
@@ -184,20 +198,20 @@ public class ElasticSearchQuery {
             switch response.result {
             case .success:
                 guard let result = response.result.value as? [String : Any] else {
-                    print("Parsing Error")
+                    print("First Data Parsing Error")
                     return
                 }
                 guard let hits = result["hits"] as? [String : Any] else {
-                    print("Parsing Error")
+                    print("First Data Parsing Error")
                     return
                 }
                 guard let source = hits["hits"] as? Array<[String : Any]> else {
-                    print("Parsing Error")
+                    print("First Data Parsing Error")
                     return
                 }
                 firstData = Mapper<ElasticSearchData>().mapArray(JSONArray: source)[0]
-//                self.data = Array<[ElasticSearchData]>()
-//                self.data.append(Mapper<ElasticSearchData>().mapArray(JSONArray: source) as [ElasticSearchData]!)
+                //                self.data = Array<[ElasticSearchData]>()
+                //                self.data.append(Mapper<ElasticSearchData>().mapArray(JSONArray: source) as [ElasticSearchData]!)
                 
                 break
                 
@@ -206,14 +220,19 @@ public class ElasticSearchQuery {
                 return
             }
             
-            extractData(rawData: rawData, firstData: firstData)
+            extractData(rawData: rawData, firstData: firstData, callback: callback, field: field, sortingFeature: sortingFeature, firstDataTimestamp: firstDataTimestamp)
             
         }
         
         
     }
     
-    static private func extractData(rawData: [ElasticSearchData], firstData: ElasticSearchData) {
+    static private func extractData(rawData: [ElasticSearchData],
+                                    firstData: ElasticSearchData,
+                                    callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void,
+                                    field: String,
+                                    sortingFeature: String,
+                                    firstDataTimestamp: String) {
         var average = 0
         var maximum = Int.min
         var minimum = Int.max
@@ -228,7 +247,7 @@ public class ElasticSearchQuery {
                 break
             }
             
-            switch self.field {
+            switch field {
             case "dust":
                 guard elem.sourceData?.dust != nil else {
                     break
@@ -286,7 +305,7 @@ public class ElasticSearchQuery {
             average /= rawData.count
         }
         
-        switch self.field {
+        switch field {
         case "dust":
             guard firstData.sourceData?.dust != nil else {
                 break
@@ -321,17 +340,15 @@ public class ElasticSearchQuery {
             break
         }
         
-        self.callback(average, maximum, minimum, dataArray, timestampArray, extractedFirstData)
+        callback(average, maximum, minimum, dataArray, timestampArray, extractedFirstData)
     }
     
     static public func queryData(field: String = "dust", sortingFeature: String = "datetime_idx", orderType: String = "asc", startTimestamp: String = "1491004800000", endTimestamp: String = "1499177600000", callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
-        self.callback = callback
-        self.field = field
-        self.sortingFeature = sortingFeature
-        self.firstDataTimestamp = String(Int(startTimestamp)! - 1)
         
-        let body = buildBody(orderType: orderType, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
-        getDataSize(body: body)
+        let firstDataTimestamp = String(Int(startTimestamp)! - 1)
+        
+        let body = buildBody(sortingFeature: sortingFeature, orderType: orderType, field: field, startTimestamp: startTimestamp, endTimestamp: endTimestamp)
+        getDataSize(body: body, callback: callback, field: field, sortingFeature: sortingFeature, firstDataTimestamp: firstDataTimestamp)
     }
     
     static public func getDust(from: String, to: String, callback: @escaping (Int, Int, Int, [Int], [Int], Int) -> Void) {
@@ -373,9 +390,10 @@ public class ElasticSearchQuery {
         
         queryData(field: field, sortingFeature: sortingFeature, orderType: orderType, startTimestamp: from, endTimestamp: to, callback: callback)
     }
-
+    
     
     static public func setURL(url : String) -> Void {
         self.urlString = url
     }
 }
+
